@@ -1,0 +1,87 @@
+/* Custom Dark Theme Styles for SME Carbon Footprint & Credit Trading */
+body {
+  background-color: #0b132b;
+  color: #e0e6ed;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Gradient Title */
+.text-gradient {
+  background: linear-gradient(135deg, #10b981, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom Card Container */
+.card-custom {
+  background-color: #1c2541;
+  border: 1px solid #2a385b;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+/* Form Controls */
+.form-control-custom {
+  background-color: #0b132b !important;
+  border: 1px solid #3a506b !important;
+  color: #ffffff !important;
+  border-radius: 8px;
+}
+
+.form-control-custom:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.25) !important;
+}
+
+.text-sm {
+  font-size: 0.85rem;
+  color: #a0aec0;
+}
+
+/* Badges for Endpoints */
+.card-title-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+
+.badge-post { background-color: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
+.badge-get { background-color: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid #3b82f6; }
+.badge-put { background-color: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+.badge-delete { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+
+/* Console Box Output */
+.console-box {
+  background-color: #050a18;
+  color: #10b981;
+  border: 1px solid #1c2d42;
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 400px;
+  max-height: 600px;
+  overflow-y: auto;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Custom Scrollbar for Console */
+.console-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.console-box::-webkit-scrollbar-track {
+  background: #050a18;
+}
+
+.console-box::-webkit-scrollbar-thumb {
+  background: #2a385b;
+  border-radius: 3px;
+}
