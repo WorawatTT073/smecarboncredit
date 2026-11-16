@@ -433,7 +433,7 @@ body.modal-open { overflow: hidden; }
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: #374151;
 }
 .nested-row {
   display: grid;
@@ -443,7 +443,7 @@ body.modal-open { overflow: hidden; }
 .nested-row:last-child { border-bottom: 0; }
 .nested-label {
   padding: 9px 12px;
-  background: #f8fafc;
+  background: #374151;
   font-weight: 600;
   color: #374151;
 }
@@ -456,7 +456,7 @@ body.modal-open { overflow: hidden; }
 .nested-title {
   font-weight: 700;
   padding: 7px 10px;
-  background: #f3f4f6;
+  background: #374151;
   border: 1px solid #e5e7eb;
   border-bottom: 0;
   border-radius: 8px 8px 0 0;
