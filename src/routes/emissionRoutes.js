@@ -37,6 +37,26 @@ router.post('/', requireAuth, requireRole('Partner'), async (req, res) => {
   }
 });
 
+// GET /api/v1/emissions?company_id=... — Partner, Admin
+router.get('/', requireAuth, requireRole('Partner', 'Admin'), async (req, res) => {
+  const { company_id } = req.query;
+  if (!company_id) return res.status(400).json({ error: 'company_id is required' });
+
+  try {
+    const result = await pool.query(`
+      SELECT id, activity_type, amount, carbon_ton_equivalent, record_date
+      FROM emission_records
+      WHERE company_id = $1
+      ORDER BY record_date DESC, id DESC;
+    `, [company_id]);
+
+    res.status(200).json({ data: result.rows });
+  } catch (err) {
+    if (err.code === '22P02') return res.status(400).json({ error: 'Invalid company UUID' });
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // GET /api/v1/emissions/summary?company_id=...
 router.get('/summary', requireAuth, async (req, res) => {
   const { company_id } = req.query;

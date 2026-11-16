@@ -426,3 +426,53 @@ body.modal-open { overflow: hidden; }
 .live-table-wrap .response-data-table {
   min-width: 100%;
 }
+
+/* Readable data presentation: never show nested API objects as raw JSON */
+.nested-table {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.nested-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 35%) 1fr;
+  border-bottom: 1px solid #e5e7eb;
+}
+.nested-row:last-child { border-bottom: 0; }
+.nested-label {
+  padding: 9px 12px;
+  background: #f8fafc;
+  font-weight: 600;
+  color: #374151;
+}
+.nested-value {
+  padding: 9px 12px;
+  color: #111827;
+  word-break: break-word;
+}
+.nested-result { margin: 4px 0; }
+.nested-title {
+  font-weight: 700;
+  padding: 7px 10px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+.nested-result + .nested-result { margin-top: 10px; }
+.response-data-table code { white-space: normal; }
+@media (max-width: 640px) {
+  .nested-row { grid-template-columns: 1fr; }
+  .nested-label { border-bottom: 1px solid #e5e7eb; }
+}
+
+/* Emission management table */
+.emission-table th,
+.emission-table td { vertical-align: middle; }
+.emission-table td:last-child { white-space: nowrap; text-align: center; }
+.emission-list-table { width: 100%; }
+@media (max-width: 768px) {
+  .emission-table { min-width: 720px; }
+}
