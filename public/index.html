@@ -195,20 +195,57 @@
       .replace(/'/g, '&#039;');
   }
 
-  function escapeHtml(value) {
-    return String(value ?? '-')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+  const HIDDEN_MODAL_FIELDS = new Set([
+    'company_id', 'seller_company_id', 'buyer_company_id',
+    'transaction_id', 'emission_id', 'listing_id', 'id', 'user_id'
+  ]);
+
+  const FIELD_LABELS = {
+    record_count: 'จำนวนรายการ',
+    total_tco2e: 'Carbon Footprint รวม',
+    carbon_ton_equivalent: 'Carbon Footprint',
+    amount_tco2e: 'ปริมาณ Carbon Credit',
+    price_per_ton: 'ราคา / tCO₂e',
+    total_price: 'ราคารวม',
+    amount: 'ปริมาณ',
+    activity_type: 'ประเภทกิจกรรม',
+    record_date: 'วันที่บันทึก',
+    reduction_target: 'เป้าหมายการลดคาร์บอน',
+    industry_type: 'ประเภทธุรกิจ',
+    status: 'สถานะ',
+    created_at: 'วันที่สร้าง',
+    updated_at: 'วันที่อัปเดต',
+    name: 'ชื่อบริษัท',
+    email: 'อีเมล',
+    role: 'บทบาท',
+    message: 'รายละเอียด',
+    error: 'ข้อผิดพลาด'
+  };
+
+  function humanizeKey(key) {
+    if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+    return String(key)
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
   }
 
-  function formatCell(value) {
+  function formatCell(value, key='') {
     if (value === null || value === undefined || value === '') return '-';
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    if (typeof value === 'object') return `<code>${escapeHtml(JSON.stringify(value))}</code>`;
+    if (typeof value === 'boolean') return value ? 'ใช่' : 'ไม่ใช่';
+    if (typeof value === 'number') return Number.isInteger(value) ? value.toLocaleString('th-TH') : value.toLocaleString('th-TH', {maximumFractionDigits: 4});
+    if (typeof value === 'object') {
+      const filtered = Object.fromEntries(Object.entries(value).filter(([k]) => !HIDDEN_MODAL_FIELDS.has(k)));
+      return Object.keys(filtered).length ? `<code>${escapeHtml(JSON.stringify(filtered))}</code>` : '-';
+    }
+    if (key === 'total_tco2e' || key === 'carbon_ton_equivalent') return `${escapeHtml(value)} tCO₂e`;
+    if (key === 'price_per_ton' || key === 'total_price') return `฿${escapeHtml(Number(value).toLocaleString('th-TH'))}`;
+    if (key === 'reduction_target') return `${escapeHtml(value)}%`;
     return escapeHtml(value);
+  }
+
+  function cleanModalObject(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    return Object.fromEntries(Object.entries(obj).filter(([key]) => !HIDDEN_MODAL_FIELDS.has(key)));
   }
 
   const apiModal = document.getElementById('apiModal');
@@ -229,7 +266,7 @@
     apiModalTitle.className = `api-modal-title ${success ? 'success-text' : 'error-text'}`;
 
     let content = message ? `<p class="api-modal-message">${escapeHtml(message)}</p>` : '';
-    if (table && data) content += renderModalTable(data);
+    if (table) content += renderModalTable(data || {status: success ? 'สำเร็จ' : 'ไม่สำเร็จ'});
     apiModalContent.innerHTML = content;
     apiModal.classList.remove('d-none');
     document.body.classList.add('modal-open');
@@ -245,12 +282,16 @@
 
     if (Array.isArray(rows)) {
       if (!rows.length) return '<div class="empty-response">ไม่พบข้อมูล</div>';
-      const columns = [...new Set(rows.flatMap(item => Object.keys(item || {})))];
-      return `<div class="modal-table-wrap"><table class="response-data-table"><thead><tr>${columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr>${columns.map(c => `<td>${formatCell(item?.[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      const columns = [...new Set(rows.flatMap(item => Object.keys(cleanModalObject(item || {}))))]
+        .filter(c => !HIDDEN_MODAL_FIELDS.has(c));
+      return `<div class="modal-table-wrap"><table class="response-data-table"><thead><tr>${columns.map(c => `<th>${escapeHtml(humanizeKey(c))}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr>${columns.map(c => `<td>${formatCell(item?.[c], c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     }
 
     if (typeof data === 'object') {
-      return `<div class="modal-table-wrap"><table class="response-data-table response-key-value"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>${Object.entries(data).map(([key,value]) => `<tr><td>${escapeHtml(key)}</td><td>${formatCell(value)}</td></tr>`).join('')}</tbody></table></div>`;
+      const clean = cleanModalObject(data);
+      const entries = Object.entries(clean);
+      if (!entries.length) return '<div class="empty-response">ดำเนินการสำเร็จ</div>';
+      return `<div class="modal-table-wrap"><table class="response-data-table response-key-value"><thead><tr><th>รายการ</th><th>ข้อมูล</th></tr></thead><tbody>${entries.map(([key,value]) => `<tr><td>${escapeHtml(humanizeKey(key))}</td><td>${formatCell(value, key)}</td></tr>`).join('')}</tbody></table></div>`;
     }
 
     return `<div class="response-value">${formatCell(data)}</div>`;
@@ -262,10 +303,10 @@
     if (rows) {
       if (!rows.length) return '<div class="text-muted small text-center py-3">ไม่มีข้อมูล</div>';
       const columns = [...new Set(rows.flatMap(item => item && typeof item === 'object' ? Object.keys(item) : []))];
-      return `<div class="live-table-wrap"><table class="response-data-table"><thead><tr>${columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr>${columns.map(c => `<td>${formatCell(item?.[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      return `<div class="live-table-wrap"><table class="response-data-table"><thead><tr>${columns.map(c => `<th>${escapeHtml(humanizeKey(c))}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr>${columns.map(c => `<td>${formatCell(item?.[c], c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     }
     if (typeof data === 'object') {
-      return `<div class="live-table-wrap"><table class="response-data-table response-key-value"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>${Object.entries(data).map(([key,value]) => `<tr><td>${escapeHtml(key)}</td><td>${formatCell(value)}</td></tr>`).join('')}</tbody></table></div>`;
+      return `<div class="live-table-wrap"><table class="response-data-table response-key-value"><thead><tr><th>รายการ</th><th>ข้อมูล</th></tr></thead><tbody>${Object.entries(data).map(([key,value]) => `<tr><td>${escapeHtml(humanizeKey(key))}</td><td>${formatCell(value, key)}</td></tr>`).join('')}</tbody></table></div>`;
     }
     return `<div class="response-value">${formatCell(data)}</div>`;
   }
@@ -284,12 +325,13 @@
   function showApiResult(status, data, action='รายการ') {
     const success = status >= 200 && status < 300;
     const message = data?.message || data?.error || (success ? `${action}สำเร็จ` : `${action}ไม่สำเร็จ`);
+    const modalData = data || {status: success ? 'ดำเนินการสำเร็จ' : `HTTP ${status}`};
     showApiModal({
       title: success ? `${action}สำเร็จ` : `${action}ไม่สำเร็จ`,
       message,
       type: success ? 'success' : 'error',
-      data: success && action === 'ดึงข้อมูล' ? data : null,
-      table: success && action === 'ดึงข้อมูล'
+      data: modalData,
+      table: true
     });
   }
 
@@ -308,7 +350,7 @@
     document.getElementById('companyCard').classList.toggle('d-none', !['Partner','Admin'].includes(user.role));
     document.getElementById('deleteCard').classList.toggle('d-none', !['Partner','Admin'].includes(user.role));
     document.getElementById('transactionCard').classList.toggle('d-none', !['Customer','Partner'].includes(user.role));
-    document.getElementById('summaryCard').classList.toggle('d-none', !user.role);
+    document.getElementById('summaryCard').classList.toggle('d-none', !['Partner','Admin'].includes(user.role));
   }
   function logout() {
     localStorage.removeItem('demo_token'); localStorage.removeItem('demo_user'); authToken = null;
@@ -366,7 +408,7 @@
     try {
       const res = await fetch('/api/v1/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:loginEmail.value,password:loginPassword.value})});
       const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Login failed');
-      authToken = data.token; localStorage.setItem('demo_token', authToken); localStorage.setItem('demo_user', JSON.stringify(data.user)); showApp(data.user); showApiModal({title:'เข้าสู่ระบบสำเร็จ', message:`ยินดีต้อนรับ ${data.user.name || data.user.email || ''}`, type:'success'});
+      authToken = data.token; localStorage.setItem('demo_token', authToken); localStorage.setItem('demo_user', JSON.stringify(data.user)); showApp(data.user); showApiModal({title:'เข้าสู่ระบบสำเร็จ', message:'เข้าสู่ระบบเรียบร้อยแล้ว', type:'success', data:{name:data.user.name || data.user.email || '-', role:data.user.role || '-'}, table:true});
     } catch(err){ errorBox.textContent=err.message; errorBox.classList.remove('d-none'); }
   };
   logoutBtn.onclick = logout;
