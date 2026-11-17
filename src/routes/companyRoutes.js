@@ -4,8 +4,11 @@ const pool = require('../config/database');
 const { requireAuth, requireRole } = require('../middleware/authMiddleware');
 
 // PUT /api/v1/companies/:id
-router.put('/:id', requireAuth, requireRole('Partner', 'Admin'), async (req, res) => {
+router.put('/:id', requireAuth, requireRole('Company', 'Admin'), async (req, res) => {
   const { id } = req.params;
+  if (req.user.company_id && id !== req.user.company_id) {
+    return res.status(403).json({ error: 'แก้ไขได้เฉพาะบริษัทในบัญชีนี้' });
+  }
   const { name, industry_type, contact_email, reduction_target } = req.body;
 
   if (reduction_target !== undefined && (!Number.isFinite(Number(reduction_target)) || Number(reduction_target) < 0 || Number(reduction_target) > 100)) {

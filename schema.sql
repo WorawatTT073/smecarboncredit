@@ -42,7 +42,3 @@ INSERT INTO companies (id, name, tax_id, industry_type, contact_email, reduction
 ('11111111-1111-1111-1111-111111111111', 'Green Logistics Thailand', '0105560000011', 'ขนส่ง', 'contact@greenlogistics.co.th', 20),
 ('22222222-2222-2222-2222-222222222222', 'Siam Eco Manufacture', '0105560000022', 'การผลิต', 'info@siameco.com', 30)
 ON CONFLICT DO NOTHING;
-
-INSERT INTO credit_transactions (seller_company_id, buyer_company_id, amount_tco2e, price_per_ton, status)
-SELECT '22222222-2222-2222-2222-222222222222', NULL, 50, 500, 'Open'
-WHERE NOT EXISTS (SELECT 1 FROM credit_transactions WHERE status = 'Open');

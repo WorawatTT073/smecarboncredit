@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const pool = new Pool({
   host: process.env.PGHOST || 'localhost',
-  port: process.env.PGPORT || 5432,
+  port: process.env.PGPORT || 5433,
   user: process.env.PGUSER || 'postgres',
   password: process.env.PGPASSWORD || 'postgrespassword',
   database: process.env.PGDATABASE || 'carbon_credit_db',

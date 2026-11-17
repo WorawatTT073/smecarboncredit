@@ -1,94 +1,114 @@
 const express = require('express');
-const router = express.Router();
 const pool = require('../config/database');
 const { calculateCarbonEquivalent, isSupportedActivity } = require('../services/carbonCalculator');
 const { requireAuth, requireRole } = require('../middleware/authMiddleware');
+const { ApiError, asyncRoute, parseYear, decimal, inRound, requireAllocation } = require('../services/ets');
 
-// POST /api/v1/emissions — Partner (SME Owner)
-router.post('/', requireAuth, requireRole('Partner'), async (req, res) => {
-  const { company_id, activity_type, amount, record_date } = req.body;
-  const numericAmount = Number(amount);
+const parseEvidence = require('../services/listingEvidence');
+const router = express.Router();
+router.use(requireAuth, requireRole('Admin', 'Company'));
+router.use('/submissions', require('./emissionSubmissionRoutes'));
 
-  if (!company_id || !activity_type || amount === undefined || !record_date) {
-    return res.status(400).json({ error: 'Missing required parameters' });
+function companyScope(req) {
+  const requested = req.query.company_id;
+  if (req.user.company_id && requested && requested !== req.user.company_id) {
+    throw new ApiError(403, 'ดูได้เฉพาะข้อมูลของบริษัทในบัญชีนี้');
   }
-  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-    return res.status(400).json({ error: 'amount must be a number greater than 0' });
-  }
-  if (!isSupportedActivity(activity_type)) {
-    return res.status(400).json({ error: 'Unsupported activity_type', allowed: ['ELECTRICITY', 'DIESEL', 'GASOLINE', 'WATER'] });
-  }
+  const companyId = req.user.company_id || requested;
+  if (!companyId) throw new ApiError(400, 'กรุณาเลือกบริษัท');
+  return companyId;
+}
 
+function validDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+router.post('/', requireRole('Company'), asyncRoute(async (req, res) => {
+  const { activity_type, period_start, period_end } = req.body;
+  const amount = decimal(req.body.amount, 12, 2);
+  if (!isSupportedActivity(activity_type)) throw new ApiError(400, 'ประเภทกิจกรรมไม่ถูกต้อง');
+  if (!validDate(period_start) || !validDate(period_end) || period_start > period_end
+      || period_start.slice(0, 4) !== period_end.slice(0, 4)) {
+    throw new ApiError(400, 'กรุณาระบุช่วงวันที่ใช้งานให้ถูกต้องและอยู่ในรอบปีเดียวกัน');
+  }
+  const document = typeof req.body.document_number === 'string' ? req.body.document_number.trim() : '';
+  const notes = typeof req.body.notes === 'string' ? req.body.notes.trim() : '';
+  if (!document || document.length > 100 || notes.length > 2000) {
+    throw new ApiError(400, 'ระบุเลขที่เอกสารไม่เกิน 100 ตัวอักษร และหมายเหตุไม่เกิน 2000 ตัวอักษร');
+  }
+  const files = parseEvidence(req.body.attachments);
+  if (!files.length) throw new ApiError(400, 'กรุณาแนบหลักฐานประกอบอย่างน้อย 1 ไฟล์');
+  const year = parseYear(period_end.slice(0, 4));
+  const companyId = req.user.company_id;
+  const total = calculateCarbonEquivalent(activity_type, amount);
   try {
-    const company = await pool.query('SELECT id FROM companies WHERE id = $1', [company_id]);
-    if (company.rowCount === 0) return res.status(404).json({ error: 'Company not found' });
-
-    const carbon_ton_equivalent = calculateCarbonEquivalent(activity_type, numericAmount);
-    const result = await pool.query(`
-      INSERT INTO emission_records (company_id, activity_type, amount, carbon_ton_equivalent, record_date)
-      VALUES ($1, $2, $3, $4, $5) RETURNING *;
-    `, [company_id, activity_type.toUpperCase(), numericAmount, carbon_ton_equivalent, record_date]);
-
-    res.status(201).json({ message: 'Emission recorded successfully', data: result.rows[0] });
-  } catch (err) {
-    if (err.code === '22P02') return res.status(400).json({ error: 'Invalid UUID/date format' });
-    if (err.code === '23503') return res.status(404).json({ error: 'Company not found' });
-    res.status(500).json({ error: 'Database error' });
+    const data = await inRound(year, ['Reporting', 'Trading'], async client => {
+      await requireAllocation(client, year, companyId);
+      const { rows: [submission] } = await client.query(`
+        INSERT INTO emission_submissions
+          (year, company_id, activity_type, amount, carbon_ton_equivalent, period_start, period_end,
+           document_number, notes, submitted_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
+      `, [year, companyId, activity_type.toUpperCase(), amount, total, period_start, period_end,
+          document, notes, req.auth.accountId]);
+      for (const file of files) {
+        await client.query(
+          'INSERT INTO emission_evidence (submission_id, filename, media_type, content) VALUES ($1,$2,$3,$4)',
+          [submission.id, file.filename, file.mediaType, file.content]
+        );
+      }
+      return submission;
+    });
+    res.status(201).json({ data });
+  } catch (error) {
+    if (error.code === '23505' && error.constraint === 'idx_emission_document_once') {
+      throw new ApiError(409, 'เลขเอกสารนี้ถูกยื่นสำหรับกิจกรรมนี้แล้ว กรุณาตรวจสอบรายการเดิม');
+    }
+    throw error;
   }
-});
+}));
 
-// GET /api/v1/emissions?company_id=... — Partner, Admin
-router.get('/', requireAuth, requireRole('Partner', 'Admin'), async (req, res) => {
-  const { company_id } = req.query;
-  if (!company_id) return res.status(400).json({ error: 'company_id is required' });
+router.get('/', asyncRoute(async (req, res) => {
+  const companyId = companyScope(req);
+  const year = req.query.year === undefined ? null : parseYear(req.query.year);
+  const { rows } = await pool.query(`
+    SELECT id, activity_type, amount, carbon_ton_equivalent, record_date::text AS record_date,
+           EXISTS (SELECT 1 FROM emission_submissions s WHERE s.record_id = emission_records.id) AS reviewed_submission
+    FROM emission_records WHERE company_id = $1
+      AND ($2::int IS NULL OR (record_date >= make_date($2, 1, 1) AND record_date < make_date($2 + 1, 1, 1)))
+    ORDER BY record_date DESC, id DESC
+  `, [companyId, year]);
+  res.json({ data: rows });
+}));
 
-  try {
-    const result = await pool.query(`
-      SELECT id, activity_type, amount, carbon_ton_equivalent, record_date
-      FROM emission_records
-      WHERE company_id = $1
-      ORDER BY record_date DESC, id DESC;
-    `, [company_id]);
+router.get('/summary', asyncRoute(async (req, res) => {
+  const companyId = companyScope(req);
+  const year = req.query.year === undefined ? null : parseYear(req.query.year);
+  const { rows } = await pool.query(`
+    SELECT $1::uuid AS company_id, COUNT(*)::int AS record_count,
+           COALESCE(SUM(carbon_ton_equivalent), 0) AS total_tco2e
+    FROM emission_records WHERE company_id = $1
+      AND ($2::int IS NULL OR (record_date >= make_date($2, 1, 1) AND record_date < make_date($2 + 1, 1, 1)))
+  `, [companyId, year]);
+  res.json({ data: rows[0] });
+}));
 
-    res.status(200).json({ data: result.rows });
-  } catch (err) {
-    if (err.code === '22P02') return res.status(400).json({ error: 'Invalid company UUID' });
-    res.status(500).json({ error: 'Database error' });
+router.delete('/:id', asyncRoute(async (req, res) => {
+  const { rows: [record] } = await pool.query(`
+    SELECT company_id, EXTRACT(YEAR FROM record_date)::int AS year FROM emission_records WHERE id = $1
+  `, [req.params.id]);
+  if (!record || (req.user.company_id && req.user.company_id !== record.company_id)) {
+    throw new ApiError(404, 'ไม่พบรายการการปล่อย');
   }
-});
-
-// GET /api/v1/emissions/summary?company_id=...
-router.get('/summary', requireAuth, async (req, res) => {
-  const { company_id } = req.query;
-  if (!company_id) return res.status(400).json({ error: 'company_id is required' });
-
-  try {
-    const result = await pool.query(`
-      SELECT company_id, COUNT(*)::int AS record_count,
-             COALESCE(SUM(carbon_ton_equivalent), 0)::numeric AS total_tco2e
-      FROM emission_records
-      WHERE company_id = $1
-      GROUP BY company_id;
-    `, [company_id]);
-
-    if (result.rowCount === 0) return res.status(200).json({ company_id, record_count: 0, total_tco2e: 0 });
-    res.status(200).json({ data: result.rows[0] });
-  } catch (err) {
-    if (err.code === '22P02') return res.status(400).json({ error: 'Invalid company UUID' });
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// DELETE /api/v1/emissions/:id — Partner, Admin
-router.delete('/:id', requireAuth, requireRole('Partner', 'Admin'), async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM emission_records WHERE id = $1 RETURNING id', [req.params.id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Record not found' });
-    res.status(204).send();
-  } catch (err) {
-    if (err.code === '22P02') return res.status(400).json({ error: 'Invalid UUID format' });
-    res.status(500).json({ error: 'Database error' });
-  }
-});
+  await inRound(record.year, 'Reporting', async client => {
+    const reviewed = await client.query('SELECT 1 FROM emission_submissions WHERE record_id = $1', [req.params.id]);
+    if (reviewed.rowCount) throw new ApiError(409, 'รายการนี้อนุมัติจากคำขอแล้ว จึงลบไม่ได้');
+    const { rowCount } = await client.query('DELETE FROM emission_records WHERE id = $1', [req.params.id]);
+    if (!rowCount) throw new ApiError(404, 'ไม่พบรายการการปล่อย');
+  });
+  res.status(204).end();
+}));
 
 module.exports = router;

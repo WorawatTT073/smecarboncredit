@@ -1,540 +1,517 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SME Carbon Footprint & Credit Trading Demo</title>
+  <title>SME Carbon Credit · ระบบจำลอง ETS</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="carbonCalculator.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
-<body>
-  <!-- Public Main Account / Landing Page -->
-  <div id="publicPage" class="public-page">
-    <div class="public-card card-custom p-4 p-md-5">
-      <div class="text-center mb-4">
-        <div class="main-account-badge">PUBLIC • MAIN ACCOUNT</div>
-        <h1 class="fw-bold text-gradient mt-3">🌱 SME Carbon Credit</h1>
-        <p class="text-muted mb-0">ตลาด Carbon Credit สำหรับธุรกิจ SMEs</p>
+<body data-view="public">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" id="brandHome" href="./" data-app-link>
+        <span class="brand-mark" aria-hidden="true">CO₂</span>
+        <span>SME<span class="brand-accent"> Carbon Credit</span></span>
+      </a>
+      <div id="guestNav">
+        <a id="guestLogin" class="btn btn-primary" href="./?page=login" data-app-link>เข้าสู่ระบบ</a>
+        <a id="guestHome" class="btn btn-outline-primary" href="./" data-app-link hidden>ดูข้อมูลสาธารณะ</a>
       </div>
-
-      <div class="card card-custom p-4 mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <div>
-            <span class="endpoint-badge public-badge">PUBLIC</span>
-            <h5 class="fw-bold text-white mt-2 mb-1">ตลาด Carbon Credit</h5>
-            
-          </div>
-          <span id="publicMarketStatus" class="badge bg-secondary">Ready</span>
-        </div>
-        <button id="btnPublicMarket" class="btn btn-info w-100 fw-bold text-white mb-3">ดูรายการ Credit ที่เปิดขาย</button>
-        <div id="publicMarketList" class="market-list">
-          <div class="text-muted small text-center py-3">กดปุ่มเพื่อดูรายการในตลาด</div>
-        </div>
-      </div>
-
-      <div class="text-center">
-        <p class="text-muted small mb-2">ต้องการบันทึก Emission, เปิดขาย หรือซื้อ Carbon Credit?</p>
-        <button id="goLoginBtn" class="btn btn-success fw-bold px-4">เข้าสู่ระบบ</button>
+      <div class="account-nav" id="accountNav" hidden>
+        <nav class="section-nav" aria-label="เมนูหลัก">
+          <a id="dashboardNavLink" href="./" data-app-link aria-current="page">หน้าหลัก</a>
+          <a id="companiesNavLink" href="./?page=companies" data-app-link data-admin-only hidden>จัดการบริษัท</a>
+          <a id="roundsNavLink" href="./?page=rounds" data-app-link data-admin-only hidden>จัดการรอบ</a>
+          <a id="marketNavLink" href="./?page=market" data-app-link>ตลาด</a>
+          <a id="historyNavLink" href="./?page=history" data-app-link>ประวัติ</a>
+        </nav>
+        <button id="logout" class="btn btn-outline-primary btn-sm">ออกจากระบบ</button>
       </div>
     </div>
-  </div>
-
-  <!-- Demo Login -->
-  <div id="loginPage" class="login-page d-none">
-    <div class="login-card card-custom p-4">
-      <div class="text-center mb-4">
-        <h1 class="fw-bold text-gradient">🌱 SME Carbon Credit</h1>
-        <p class="text-muted mb-0">Demo Login & Role-based Access</p>
-      </div>
-
-      <form id="loginForm">
-        <div class="mb-3">
-          <label class="form-label">Email</label>
-          <input id="loginEmail" type="email" class="form-control form-control-custom" placeholder="customer@demo.com" required>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Password</label>
-          <input id="loginPassword" type="password" class="form-control form-control-custom" placeholder="••••••••" required>
-        </div>
-        <button class="btn btn-success w-100 fw-bold" type="submit">เข้าสู่ระบบ</button>
-        <div id="loginError" class="alert alert-danger mt-3 d-none"></div>
-      </form>
-
-      <hr>
-      <div class="demo-accounts">
-        <div class="demo-title">Demo Accounts</div>
-        <div class="demo-account admin-account"><span class="role-dot"></span><strong>Admin</strong><code>admin@demo.com</code><span class="password-chip">admin123</span></div>
-        <div class="demo-account customer-account"><span class="role-dot"></span><strong>Customer</strong><code>customer@demo.com</code><span class="password-chip">customer123</span></div>
-        <div class="demo-account partner-account"><span class="role-dot"></span><strong>Partner</strong><code>partner@demo.com</code><span class="password-chip">partner123</span></div>
-      </div>
-      <button id="backPublicBtn" type="button" class="btn btn-outline-light btn-sm w-100 mt-3">← กลับไปหน้าหลัก Public</button>
-    </div>
-  </div>
-
-  <!-- Main Application -->
-  <div id="appPage" class="d-none">
-    <div class="container my-5">
-      <header class="text-center mb-4">
-        <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
-          <span id="userBadge" class="badge bg-secondary"></span>
-          <button id="logoutBtn" class="btn btn-outline-light btn-sm">Logout</button>
-        </div>
-        <h1 class="display-5 fw-bold text-gradient">🌱 SME Carbon Footprint & Credit Trading</h1>
-        <p class="text-muted">Demo Web CRUD with PostgreSQL • Authentication + Role-based Access</p>
-      </header>
-
-      <div class="alert alert-info small"><strong>Role:</strong> <span id="currentRole"></span> — Backend ตรวจสิทธิ์ทุก API</div>
-
-      <div class="row g-4">
-        <div class="col-lg-7">
-          <div id="emissionCard" class="card card-custom p-4 mb-4">
-            <div class="card-title-badge badge-post">POST /api/v1/emissions</div>
-            <h5 class="fw-bold mb-3 text-white">บันทึก Carbon Footprint</h5>
-            <form id="createEmissionForm">
-              <div class="mb-3"><label class="form-label text-sm">Company UUID</label><input id="createCompanyId" class="form-control form-control-custom" value="11111111-1111-1111-1111-111111111111" required></div>
-              <div class="row g-3 mb-3">
-                <div class="col-md-6"><label class="form-label text-sm">Activity</label><select id="createActivityType" class="form-select form-control-custom"><option>ELECTRICITY</option><option>DIESEL</option><option>GASOLINE</option><option>WATER</option></select></div>
-                <div class="col-md-6"><label class="form-label text-sm">Amount</label><input id="createAmount" type="number" min="0.01" step="any" class="form-control form-control-custom" required></div>
+  </header>
+  <main id="mainContent" class="container">
+    <div id="publicPage">
+      <section class="public-hero" aria-labelledby="publicHeading">
+        <div class="public-hero-inner">
+          <h1 id="publicHeading">ค้นหายอดปล่อยก๊าซเรือนกระจกของบริษัท</h1>
+          <p>ดูยอดปล่อยที่บันทึกในระบบเป็นตัน CO₂e ตามบริษัท อุตสาหกรรม และรอบปี</p>
+          <form id="publicSearchForm" class="public-search card-custom" role="search" aria-label="ค้นหายอดปล่อยของบริษัท">
+            <label class="form-label" for="publicSearch">ค้นหาบริษัท</label>
+            <div class="public-search-line">
+              <input id="publicSearch" type="search" class="form-control" placeholder="พิมพ์ชื่อบริษัทหรืออุตสาหกรรม">
+              <button type="submit" class="btn btn-primary">ค้นหา</button>
+            </div>
+            <div class="public-filters">
+              <div>
+                <label class="form-label" for="publicYear">รอบรายงาน (ค.ศ.)</label>
+                <select id="publicYear" class="form-select" disabled></select>
               </div>
-              <button class="btn btn-success w-100 fw-bold">คำนวณและบันทึก tCO2e</button>
-            </form>
-          </div>
-
-          <div id="listingCard" class="card card-custom p-4 mb-4">
-            <div class="card-title-badge badge-post">POST /api/v1/credits/listings</div>
-            <h5 class="fw-bold mb-3 text-white">เปิดขาย Carbon Credit</h5>
-            <form id="listingForm">
-              <div class="mb-3"><label class="form-label text-sm">Seller Company UUID</label><input id="listingSellerId" class="form-control form-control-custom" value="22222222-2222-2222-2222-222222222222" required></div>
-              <div class="row g-3 mb-3"><div class="col-md-6"><input id="listingAmount" type="number" min="0.01" step="any" class="form-control form-control-custom" placeholder="จำนวน tCO2e" required></div><div class="col-md-6"><input id="listingPrice" type="number" min="0.01" step="any" class="form-control form-control-custom" placeholder="ราคา/ตัน" required></div></div>
-              <button class="btn btn-success w-100 fw-bold">เปิดรายการขาย</button>
-            </form>
-          </div>
-
-          <div class="card card-custom p-4 mb-4">
-            <div class="card-title-badge badge-get">GET /api/v1/credits/market</div>
-            <h5 class="fw-bold mb-3 text-white">ตลาด Carbon Credit</h5>
-            
-            <button id="btnFetchMarket" class="btn btn-info w-100 fw-bold text-white">ดึงรายการเปิดขาย</button>
-          </div>
-
-          <div id="transactionCard" class="card card-custom p-4 mb-4">
-            <div class="card-title-badge badge-post">POST /api/v1/transactions</div>
-            <h5 class="fw-bold mb-3 text-white">ซื้อ Carbon Credit</h5>
-            <form id="transactionForm">
-              <div class="mb-3"><label class="form-label text-sm">Seller Company UUID</label><input id="txSellerId" class="form-control form-control-custom" value="22222222-2222-2222-2222-222222222222" required></div>
-              <div class="mb-3"><label class="form-label text-sm">Buyer Company UUID</label><input id="txBuyerId" class="form-control form-control-custom" value="11111111-1111-1111-1111-111111111111" required></div>
-              <div class="row g-3 mb-3"><div class="col-md-6"><input id="txAmount" type="number" min="0.01" step="any" class="form-control form-control-custom" placeholder="จำนวน tCO2e" required></div><div class="col-md-6"><input id="txPrice" type="number" min="0.01" step="any" class="form-control form-control-custom" placeholder="ราคา/ตัน" required></div></div>
-              <button class="btn btn-primary w-100 fw-bold">ส่งคำสั่งซื้อ</button>
-            </form>
-          </div>
-
-          <div id="companyCard" class="card card-custom p-4 mb-4">
-            <div class="card-title-badge badge-put">PUT /api/v1/companies/{id}</div>
-            <h5 class="fw-bold mb-3 text-white">อัปเดตข้อมูลบริษัท / เป้าหมายลดคาร์บอน</h5>
-            <form id="updateCompanyForm">
-              <input id="updateCompanyId" class="form-control form-control-custom mb-3" value="11111111-1111-1111-1111-111111111111" required>
-              <div class="row g-3 mb-3"><div class="col-md-4"><input id="updateName" class="form-control form-control-custom" placeholder="ชื่อบริษัท"></div><div class="col-md-4"><input id="updateIndustry" class="form-control form-control-custom" placeholder="อุตสาหกรรม"></div><div class="col-md-4"><input id="updateTarget" type="number" min="0" max="100" step="0.01" class="form-control form-control-custom" placeholder="เป้าหมาย %"></div></div>
-              <button class="btn btn-warning w-100 fw-bold">อัปเดตบริษัท</button>
-            </form>
-          </div>
-
-          <div id="deleteCard" class="card card-custom p-4 mb-4">
-            <div class="card-title-badge badge-delete">DELETE /api/v1/emissions/{id}</div>
-            <h5 class="fw-bold mb-2 text-white">จัดการรายการ Emission</h5>
-            <p class="text-muted small mb-3">เลือกบริษัทเพื่อดูรายการ Emission แล้วกด <strong class="text-white">ลบ</strong> ที่รายการที่กรอกผิดได้เลย ไม่ต้องกรอก Emission UUID เอง</p>
-            <div class="input-group mb-3">
-              <input id="emissionListCompanyId" class="form-control form-control-custom" value="11111111-1111-1111-1111-111111111111" placeholder="Company UUID">
-              <button id="btnFetchEmissions" type="button" class="btn btn-info text-white fw-bold">ดูรายการ</button>
+              <div>
+                <label class="form-label" for="publicIndustry">อุตสาหกรรม</label>
+                <select id="publicIndustry" class="form-select" disabled><option value="">ทุกอุตสาหกรรม</option></select>
+              </div>
             </div>
-            <div id="emissionListStatus" class="small text-muted mb-2"></div>
-            <div id="emissionList" class="emission-list-table">
-              <div class="text-muted small text-center py-3">กด “ดูรายการ” เพื่อแสดงข้อมูล Emission</div>
-            </div>
-          </div>
-
-          <div id="summaryCard" class="card card-custom p-4 mb-4">
-            <div class="card-title-badge badge-get">GET /api/v1/emissions/summary</div>
-            <h5 class="fw-bold mb-3 text-white">สรุป Carbon Footprint</h5>
-            <form id="summaryForm"><div class="input-group"><input id="summaryCompanyId" class="form-control form-control-custom" value="11111111-1111-1111-1111-111111111111" required><button class="btn btn-info text-white">ดูสรุป</button></div></form>
-          </div>
+          </form>
         </div>
+      </section>
 
-        <div class="col-lg-5">
-          <div id="liveApiCard" class="card card-custom p-4 sticky-lg-top" style="top: 20px;">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div class="card-title-badge badge-get">LIVE API RESPONSE</div>
-              <span id="liveApiStatus" class="badge bg-secondary">Ready</span>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">ผลลัพธ์จาก API</h5>
-            <p id="liveApiEndpoint" class="text-muted small mb-3">กดปุ่ม API เพื่อดูข้อมูลที่นี่</p>
-            <div id="liveApiResponse" class="live-api-response">
-              <div class="text-muted small text-center py-4">ยังไม่มีข้อมูล API</div>
-            </div>
-          </div>
+      <section id="publicResults" class="public-results card-custom workspace-panel" aria-labelledby="publicResultsHeading">
+        <div class="workspace-panel-heading">
+          <h2 id="publicResultsHeading" class="h5 section-title mb-0" tabindex="-1">ยอดปล่อยรายบริษัท</h2>
+          <span id="publicCompanyCount" class="text-body-secondary small" aria-live="polite"></span>
         </div>
+        <div class="workspace-panel-body">
+          <p id="publicRoundStatus" class="text-body-secondary small mb-2"></p>
+          <div id="publicEmissions" aria-live="polite">กำลังโหลดข้อมูล…</div>
+        </div>
+      </section>
+    </div>
 
+    <section id="loginPage" class="auth-layout" aria-labelledby="loginHeading" hidden>
+      <div class="login-card">
+        <div class="login-entry">
+          <h1 id="loginHeading">เข้าสู่ระบบ</h1>
+          <form id="loginForm">
+            <div class="mb-3">
+              <label for="email" class="form-label">อีเมล</label>
+              <input name="email" id="email" type="email" class="form-control" placeholder="name@example.com" autocomplete="username" required>
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">รหัสผ่าน</label>
+              <div class="password-field">
+                <input name="password" id="password" type="password" class="form-control" placeholder="รหัสผ่านของคุณ" autocomplete="current-password" required>
+                <button id="togglePassword" type="button" aria-controls="password" aria-pressed="false">แสดง</button>
+              </div>
+            </div>
+            <button id="loginSubmit" class="btn btn-primary btn-login w-100">เข้าสู่ระบบ</button>
+            <p id="loginError" class="text-danger" role="alert"></p>
+          </form>
+        </div>
       </div>
-    </div>
-  </div>
+      <aside class="demo-guide card-custom" aria-labelledby="demoHeading">
+        <h2 id="demoHeading" class="h5 section-title">บัญชีทดลอง</h2>
+        <p class="text-body-secondary mb-3">เลือกบัญชีเพื่อกรอกอีเมล ตารางแสดงรหัสผ่านตั้งต้นของบัญชีเดโม</p>
+        <div class="demo-roles" aria-label="เลือกบัญชีทดลอง">
+          <button type="button" data-demo="admin" aria-pressed="false"><span aria-hidden="true">AD</span>Admin</button>
+          <button type="button" data-demo="customer" aria-pressed="false"><span aria-hidden="true">B</span>บริษัท B</button>
+          <button type="button" data-demo="partner" aria-pressed="false"><span aria-hidden="true">A</span>บริษัท A</button>
+        </div>
+        <div class="table-responsive demo-credentials">
+          <table class="demo-account-table" aria-labelledby="demoHeading">
+            <thead>
+              <tr><th scope="col">Account</th><th scope="col">Password</th></tr>
+            </thead>
+            <tbody>
+              <tr id="demo-admin">
+                <td class="demo-email">admin@demo.com</td>
+                <td>admin123</td>
+              </tr>
+              <tr id="demo-customer">
+                <td class="demo-email">customer@demo.com</td>
+                <td>customer123</td>
+              </tr>
+              <tr id="demo-partner">
+                <td class="demo-email">partner@demo.com</td>
+                <td>partner123</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </aside>
+    </section>
 
-  <!-- Center Popup / Modal -->
-  <div id="apiModal" class="api-modal d-none" role="dialog" aria-modal="true" aria-labelledby="apiModalTitle">
-    <div class="api-modal-backdrop"></div>
-    <div class="api-modal-card">
-      <button id="apiModalClose" type="button" class="api-modal-close" aria-label="ปิด">×</button>
-      <div id="apiModalIcon" class="api-modal-icon">✓</div>
-      <h3 id="apiModalTitle" class="api-modal-title">สำเร็จ</h3>
-      <div id="apiModalContent" class="api-modal-content"></div>
-      <button id="apiModalOk" type="button" class="btn btn-success fw-bold px-4">ตกลง</button>
-    </div>
-  </div>
+    <section id="appPage" hidden>
+      <header class="dashboard-heading">
+        <h1 id="dashboardTitle" tabindex="-1">หน้าหลัก</h1>
+        <div class="workspace-heading-tools">
+          <div id="roundPicker" class="round-picker">
+            <label class="form-label" for="roundSelect">รอบรายงาน (ค.ศ.)</label>
+            <select id="roundSelect" class="form-select"></select>
+          </div>
+          <div class="workspace-account">
+            <div class="workspace-account-text">
+              <strong id="accountName"></strong>
+              <small id="accountRole" class="text-body-secondary"></small>
+            </div>
+            <span id="accountInitials" class="workspace-account-icon" aria-hidden="true"></span>
+          </div>
+        </div>
+      </header>
+      <div id="notice" aria-live="polite"></div>
+      <div id="dashboardPage" class="workspace-grid" hidden>
+        <div class="workspace-column">
+          <div id="overviewCards" class="card-custom overview-strip" hidden></div>
 
-<script>
-  let authToken = localStorage.getItem('demo_token');
-  const publicPage = document.getElementById('publicPage');
-  const loginPage = document.getElementById('loginPage');
+          <section class="card-custom workspace-panel" aria-labelledby="balanceHeading">
+            <div class="workspace-panel-heading">
+              <h2 class="h5 section-title mb-0" id="balanceHeading">ยอดสิทธิประจำปี</h2>
+              <span id="roundState" class="round-status" aria-live="polite"></span>
+            </div>
+            <div id="balances" class="workspace-panel-body"></div>
+            <div id="homeListingActions" class="workspace-panel-body pt-0" hidden>
+              <div id="homeListingNotice" aria-live="polite"></div>
+              <button id="sellFromHome" type="button" class="btn btn-primary w-100" aria-haspopup="dialog" aria-controls="listingDialog">ยื่นคำขอขาย<//button>
+            </div>
+          </section>
 
-  function escapeHtml(value) {
-    return String(value ?? '-')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
+          <section id="emissionReviewSection" class="card-custom workspace-panel" hidden>
+            <div class="workspace-panel-heading"><h2 class="h5 section-title mb-0">ยอดใช้จริงรอตรวจสอบ</h2></div>
+            <div class="workspace-panel-body"><div id="emissionReviewQueue"></div></div>
+          </section>
 
-  const HIDDEN_MODAL_FIELDS = new Set([
-    'company_id', 'seller_company_id', 'buyer_company_id',
-    'transaction_id', 'emission_id', 'listing_id', 'id', 'user_id'
-  ]);
+          <section id="listingReviewSection" class="card-custom workspace-panel" hidden>
+            <div class="workspace-panel-heading"><h2 class="h5 section-title mb-0">คำขอขายรอตรวจสอบ</h2></div>
+            <div class="workspace-panel-body"><div id="reviewNotice" aria-live="polite"></div><div id="listingReviewQueue"></div></div>
+          </section>
 
-  const FIELD_LABELS = {
-    record_count: 'จำนวนรายการ',
-    total_tco2e: 'Carbon Footprint รวม',
-    carbon_ton_equivalent: 'Carbon Footprint',
-    amount_tco2e: 'ปริมาณ Carbon Credit',
-    price_per_ton: 'ราคา / tCO₂e',
-    total_price: 'ราคารวม',
-    amount: 'ปริมาณ',
-    activity_type: 'ประเภทกิจกรรม',
-    record_date: 'วันที่บันทึก',
-    reduction_target: 'เป้าหมายการลดคาร์บอน',
-    industry_type: 'ประเภทธุรกิจ',
-    status: 'สถานะ',
-    created_at: 'วันที่สร้าง',
-    updated_at: 'วันที่อัปเดต',
-    name: 'ชื่อบริษัท',
-    email: 'อีเมล',
-    role: 'บทบาท',
-    message: 'รายละเอียด',
-    error: 'ข้อผิดพลาด'
-  };
 
-  function humanizeKey(key) {
-    if (FIELD_LABELS[key]) return FIELD_LABELS[key];
-    return String(key)
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
-  }
+        </div>
 
-  function formatCell(value, key='') {
-    if (value === null || value === undefined || value === '') return '-';
-    if (typeof value === 'boolean') return value ? 'ใช่' : 'ไม่ใช่';
-    if (typeof value === 'number') return Number.isInteger(value) ? value.toLocaleString('th-TH') : value.toLocaleString('th-TH', {maximumFractionDigits: 4});
-    if (Array.isArray(value)) {
-      if (!value.length) return '-';
-      return value.map((item, index) => {
-        if (item && typeof item === 'object') {
-          return `<div class="nested-result"><div class="nested-title">รายการที่ ${index + 1}</div>${renderNestedRows(item)}</div>`;
-        }
-        return `<div>${formatCell(item, key)}</div>`;
-      }).join('');
-    }
-    if (typeof value === 'object') {
-      return renderNestedRows(value);
-    }
-    if (key === 'total_tco2e' || key === 'carbon_ton_equivalent') return `${escapeHtml(value)} tCO₂e`;
-    if (key === 'price_per_ton' || key === 'total_price') return `฿${escapeHtml(Number(value).toLocaleString('th-TH'))}`;
-    if (key === 'reduction_target') return `${escapeHtml(value)}%`;
-    return escapeHtml(value);
-  }
+        <div class="workspace-column">
+          <section id="emissionsSection" class="card-custom workspace-panel" hidden>
+            <div class="workspace-panel-heading">
+              <h2 class="h5 section-title mb-0">ยื่นยอดใช้จริงและยอดปล่อย</h2>
+              <div id="emissionCompanyPicker" hidden>
+                <label for="emissionCompany" class="form-label">บริษัท</label>
+                <select id="emissionCompany" class="form-select"></select>
+              </div>
+            </div>
+            <div class="workspace-panel-body">
+              <p id="emissionStatus" class="text-body-secondary small" hidden></p>
+              <p class="text-body-secondary small">กรอกยอดรวมของช่วงที่ใช้จริง เช่น บิลเดือนมกราคมใช้ไฟ 1,000 kWh ระบุวันที่ 1–31 มกราคม พร้อมเลขบิลเดิมเพื่อป้องกันการยื่นซ้ำ</p>
+              <div id="emissionNotice" aria-live="polite"></div>
+              <form id="emissionForm" class="row g-2 align-items-end mb-3" hidden>
+                <div class="col-md">
+                  <label for="activity" class="form-label">กิจกรรม</label>
+                  <select id="activity" name="activity" class="form-select">
+                    <option value="ELECTRICITY">การใช้ไฟฟ้า</option>
+                    <option value="DIESEL">น้ำมันดีเซล</option>
+                    <option value="GASOLINE">น้ำมันเบนซิน</option>
+                    <option value="WATER">การใช้น้ำ</option>
+                  </select>
+                </div>
+                <div class="col-md">
+                  <label for="emissionAmount" class="form-label">ปริมาณที่ใช้ (<span id="activityUnit">kWh</span>)</label>
+                  <input name="amount" id="emissionAmount" type="number" min="0.01" max="9999999999.99" step="0.01" class="form-control" required>
+                </div>
+                <div id="emissionDateField" class="col-12 row g-2 mt-0">
+                  <div class="col-sm-6">
+                    <label for="emissionPeriodStart" class="form-label">เริ่มใช้งานวันที่</label>
+                    <input id="emissionPeriodStart" name="period_start" type="date" class="form-control" required>
+                  </div>
+                  <div class="col-sm-6">
+                    <label for="recordDate" class="form-label">สิ้นสุดวันที่</label>
+                    <input name="period_end" id="recordDate" type="date" class="form-control" required>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label for="emissionDocument" class="form-label">เลขที่เอกสาร / เลขบิล</label>
+                  <input id="emissionDocument" name="document_number" class="form-control" maxlength="100" required>
+                </div>
+                <div class="col-12">
+                  <label for="emissionNotes" class="form-label">หมายเหตุ</label>
+                  <textarea id="emissionNotes" name="notes" class="form-control" maxlength="2000" rows="2"></textarea>
+                </div>
+                <div class="col-12">
+                  <label for="emissionEvidence" class="form-label">หลักฐานประกอบยอดใช้จริง</label>
+                  <input id="emissionEvidence" type="file" class="form-control" accept=".pdf,.png,.jpg,.jpeg" multiple required aria-describedby="emissionEvidenceHint">
+                  <p id="emissionEvidenceHint" class="form-text mb-0">แนบบิลหรือรูปมิเตอร์ PDF, PNG หรือ JPEG สูงสุด 3 ไฟล์ ไฟล์ละไม่เกิน 2 MB</p>
+                </div>
+                <div class="col-12">
+                  <div class="emission-preview">
+                    <div>
+                      <span class="form-label">ยอดปล่อยที่คำนวณได้</span>
+                    </div>
+                    <output id="emissionEstimate" for="activity emissionAmount" aria-live="polite">—</output>
+                  </div>
+                </div>
+                <div id="emissionSaveRow" class="col-12"><button id="saveEmission" class="btn btn-primary">ส่งยอดให้แอดมินตรวจสอบ</button></div>
+              </form>
+              <h3 class="h6 section-title">คำขอยอดใช้จริง</h3>
+              <div id="emissionSubmissions" class="mb-3"></div>
+              <section id="emissionBreakdown" class="mb-3" hidden aria-labelledby="emissionBreakdownHeading">
+                <h3 id="emissionBreakdownHeading" class="h6 section-title">ยอดที่อนุมัติแล้วแยกตามกิจกรรม</h3>
+                <div id="emissionTotals"></div>
+              </section>
+              <div class="workspace-record-heading">
+                <h3 class="h6 section-title mb-0">รายการยอดปล่อยที่รับรอง <span id="emissionRecordCount" class="text-body-secondary small"></span></h3>
+                <input id="emissionSearch" type="search" class="form-control" aria-label="ค้นหารายการที่บันทึก" placeholder="ค้นหากิจกรรมหรือวันที่">
+              </div>
+              <div id="emissions"></div>
+            </div>
+          </section>
 
-  function cleanModalObject(obj) {
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
-    return Object.fromEntries(Object.entries(obj).filter(([key]) => !HIDDEN_MODAL_FIELDS.has(key)));
-  }
+          <details id="companySection" class="card-custom workspace-panel-body" hidden>
+            <summary class="h5 section-title mb-0">ข้อมูลบริษัท</summary>
+            <form id="companyForm" class="row g-2 align-items-end mt-2">
+              <div class="col-md-6"><label class="form-label" for="profileCompany">บริษัท</label><select name="company" id="profileCompany" class="form-select" required></select></div>
+              <div class="col-md-6"><label class="form-label" for="profileName">ชื่อ</label><input name="name" id="profileName" class="form-control" maxlength="255" required></div>
+              <div class="col-md"><label class="form-label" for="profileIndustry">อุตสาหกรรม</label><input name="industry" id="profileIndustry" class="form-control" maxlength="100" required></div>
+              <div class="col-md"><label class="form-label" for="profileEmail">อีเมลติดต่อ</label><input name="email" id="profileEmail" type="email" class="form-control" maxlength="255" required></div>
+              <div class="col-md"><label class="form-label" for="profileTarget">เป้าลด (%)</label><input name="target" id="profileTarget" type="number" min="0" max="100" step="0.01" class="form-control" required></div>
+              <div class="col-md-auto"><button class="btn btn-outline-primary w-100">บันทึกข้อมูล</button></div>
+            </form>
+          </details>
+        </div>
+      </div>
 
-  function renderNestedRows(obj) {
-    if (!obj || typeof obj !== 'object') return formatCell(obj);
-    const entries = Object.entries(obj).filter(([key]) => !HIDDEN_MODAL_FIELDS.has(key));
-    if (!entries.length) return '-';
-    return `<div class="nested-table">${entries.map(([key, value]) => {
-      const rendered = value && typeof value === 'object'
-        ? renderNestedRows(value)
-        : formatCell(value, key);
-      return `<div class="nested-row"><div class="nested-label">${escapeHtml(humanizeKey(key))}</div><div class="nested-value">${rendered}</div></div>`;
-    }).join('')}</div>`;
-  }
+      <div id="roundsPage" hidden>
+          <section id="adminRound" class="card-custom workspace-panel" hidden>
+            <div class="workspace-panel-heading">
+              <h2 class="h5 section-title mb-0">จัดการรอบรายงาน</h2>
+            </div>
+            <div class="workspace-panel-body">
+              <div class="row g-3">
+                <form id="createRound" class="col-md-6">
+                  <label class="form-label" for="newYear">ปีของรอบใหม่ (ค.ศ.)</label>
+                  <input id="newYear" name="year" type="number" min="1900" max="9998" class="form-control mb-3" placeholder="เช่น 2028" required>
+                  <p class="form-label mb-2">กำหนดสิทธิให้แต่ละบริษัท (ตัน CO₂e)</p>
+                  <div id="newRoundAllocations" class="mb-3"></div>
+                  <button id="createRoundSubmit" class="btn btn-primary w-100" type="submit">สร้างรอบพร้อมจัดสรรสิทธิ</button>
+                  <div id="createRoundNotice" class="mt-2" aria-live="polite"></div>
+                </form>
 
-  const apiModal = document.getElementById('apiModal');
-  const apiModalIcon = document.getElementById('apiModalIcon');
-  const apiModalTitle = document.getElementById('apiModalTitle');
-  const apiModalContent = document.getElementById('apiModalContent');
+              </div>
+              <div class="mt-3">
+                <button id="openTrading" class="btn btn-primary" hidden>รับรองยอดปล่อยและเปิดตลาด</button>
+                <button id="closeRound" class="btn btn-warning" hidden>ปิดรอบและสรุปผล</button>
+              </div>
+            </div>
+          </section>
+      </div>
 
-  function closeApiModal() {
-    apiModal.classList.add('d-none');
-    document.body.classList.remove('modal-open');
-  }
+      <div id="marketPage" hidden>
+        <section id="marketSection" class="marketplace mb-4" aria-labelledby="dashboardTitle" hidden>
+          <div class="section-heading marketplace-heading">
+            <p class="text-body-secondary mb-0">ซื้อขายสิทธิการปล่อยก๊าซเรือนกระจกในรอบ <span id="marketYear"></span></p>
+            <button id="refreshMarket" type="button" class="btn btn-outline-primary btn-sm">อัปเดตประกาศ</button>
+          </div>
+          <div id="marketNotice" aria-live="polite"></div>
+          <form id="buyForm" class="card-custom market-order-panel mb-3" aria-labelledby="buyHeading" hidden>
+            <div class="section-heading mb-2">
+              <div>
+                <h3 id="buyHeading" class="h6 section-title mb-1">ซื้อสิทธิจาก <span id="buySeller"></span></h3>
+                <p id="buyDetails" class="text-body-secondary small mb-0"></p>
+              </div>
+              <button id="cancelBuy" type="button" class="btn btn-outline-primary btn-sm">ปิดรายการ</button>
+            </div>
+            <input id="buyListing" name="listing" type="hidden">
+            <div class="row g-2 align-items-end">
+              <div class="col-md">
+                <label class="form-label" for="buyAmount">จำนวนซื้อ (ตัน CO₂e)</label>
+                <input id="buyAmount" name="amount" type="number" min="0.0001" step="0.0001" class="form-control" aria-describedby="buyDetails" required>
+              </div>
+              <div class="col-md">
+                <span class="form-label d-block">ราคารวมโดยประมาณ</span>
+                <output id="buyTotal" for="buyAmount" class="market-total d-block" aria-live="polite">—</output>
+              </div>
+              <div class="col-md-auto"><button class="btn btn-primary w-100">ยืนยันซื้อ</button></div>
+            </div>
+          </form>
+          <div id="marketFilters" class="market-filters card-custom" hidden>
+            <div class="section-heading mb-2">
+              <h3 class="h6 section-title mb-0">ตัวกรองประกาศ</h3>
+              <span id="marketCount" class="text-body-secondary small" aria-live="polite"></span>
+            </div>
+            <div class="market-filter-grid">
+              <div>
+                <label for="marketSearch" class="form-label">ค้นหาบริษัท</label>
+                <input type="search" id="marketSearch" class="form-control" placeholder="ชื่อบริษัทหรืออุตสาหกรรม">
+              </div>
+              <div>
+                <label for="marketIndustry" class="form-label">อุตสาหกรรม</label>
+                <select id="marketIndustry" class="form-select"></select>
+              </div>
+              <div id="marketCoverageFilter" hidden>
+                <label for="marketCoverage" class="form-label">จำนวนที่ต้องการ</label>
+                <select id="marketCoverage" class="form-select">
+                  <option value="all">ทุกจำนวน</option>
+                  <option value="enough">พอสำหรับยอดที่ขาด</option>
+                </select>
+              </div>
+              <div>
+                <label for="marketSort" class="form-label">เรียงตาม</label>
+                <select id="marketSort" class="form-select">
+                  <option value="recent">ประกาศล่าสุด</option>
+                  <option value="price-low">ราคาต่ำสุดก่อน</option>
+                  <option value="quantity-high">จำนวนมากสุดก่อน</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div id="market" class="market-results card-custom"></div>
+        </section>
+      </div>
 
-  function showApiModal({title='สำเร็จ', message='', type='success', data=null, table=false}) {
-    const success = type === 'success';
-    apiModalIcon.textContent = success ? '✓' : '!';
-    apiModalIcon.className = `api-modal-icon ${success ? 'success' : 'error'}`;
-    apiModalTitle.textContent = title;
-    apiModalTitle.className = `api-modal-title ${success ? 'success-text' : 'error-text'}`;
+      <div id="accountProfilePage" hidden>
+        <a href="./" class="btn btn-outline-primary btn-sm mb-3" data-app-link>← กลับหน้าหลัก</a>
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <section class="card-custom p-3 p-md-4" aria-labelledby="accountDetailsHeading">
+              <h2 id="accountDetailsHeading" class="h5 section-title">ข้อมูลบัญชี</h2>
+              <div id="accountDetailsNotice" class="account-feedback" aria-live="polite"></div>
+              <form id="accountDetailsForm">
+                <div class="mb-3">
+                  <label class="form-label" for="accountDisplayName">ชื่อที่แสดง</label>
+                  <input id="accountDisplayName" name="name" class="form-control" autocomplete="name" maxlength="100" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="accountEmail">อีเมลสำหรับเข้าสู่ระบบ</label>
+                  <input id="accountEmail" type="email" class="form-control" readonly>
+                </div>
+                <button type="submit" class="btn btn-primary">บันทึกชื่อ</button>
+              </form>
+            </section>
+          </div>
+          <div class="col-lg-6">
+            <section class="card-custom p-3 p-md-4" aria-labelledby="accountPasswordHeading">
+              <h2 id="accountPasswordHeading" class="h5 section-title">เปลี่ยนรหัสผ่าน</h2>
+              <div id="accountPasswordNotice" class="account-feedback" aria-live="polite"></div>
+              <form id="accountPasswordForm">
+                <div class="mb-3">
+                  <label class="form-label" for="accountCurrentPassword">รหัสผ่านปัจจุบัน</label>
+                  <input id="accountCurrentPassword" name="current" type="password" class="form-control" autocomplete="current-password" maxlength="256" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="accountNewPassword">รหัสผ่านใหม่</label>
+                  <input id="accountNewPassword" name="new-password" type="password" class="form-control" autocomplete="new-password" minlength="12" maxlength="256" aria-describedby="newPasswordHint" required>
+                  <p id="newPasswordHint" class="form-text mb-0">อย่างน้อย 12 ตัวอักษร</p>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="accountConfirmPassword">ยืนยันรหัสผ่านใหม่</label>
+                  <input id="accountConfirmPassword" name="confirm" type="password" class="form-control" autocomplete="new-password" minlength="12" maxlength="256" required>
+                </div>
+                <button type="submit" class="btn btn-primary">บันทึกรหัสผ่านใหม่</button>
+              </form>
+            </section>
+          </div>
+        </div>
+      </div>
 
-    let content = message ? `<p class="api-modal-message">${escapeHtml(message)}</p>` : '';
-    if (table) content += renderModalTable(data || {status: success ? 'สำเร็จ' : 'ไม่สำเร็จ'});
-    apiModalContent.innerHTML = content;
-    apiModal.classList.remove('d-none');
-    document.body.classList.add('modal-open');
-  }
+      <div id="companiesPage" hidden>
+        <section class="card-custom workspace-panel">
+          <div class="workspace-panel-heading"><h2 class="h5 section-title mb-0">แก้ไขสิทธิของบริษัท</h2></div>
+          <div class="workspace-panel-body">
+            <p class="text-body-secondary small">เลือกบริษัทและวิธีปรับสิทธิ จากนั้นกรอกจำนวนที่ต้องการเพิ่ม ลด หรือกำหนดเป็นยอดใหม่</p>
+            <div id="companyCreditNotice" aria-live="polite"></div>
+                <form id="allocationForm" class="mb-3">
+                  <label class="form-label" for="allocationCompany">ปรับสิทธิที่ได้รับ (ตัน CO₂e)</label>
+                  <div class="input-group">
+                    <select id="allocationCompany" name="company" class="form-select" aria-label="บริษัท" required></select>
+                    <select id="allocationMode" name="mode" class="form-select" aria-label="วิธีปรับสิทธิ">
+                      <option value="set">กำหนดยอดใหม่</option><option value="add">เพิ่มสิทธิ</option><option value="subtract">ลดสิทธิ</option>
+                    </select>
+                    <input name="amount" type="number" min="0" max="99999999.9999" step="0.0001" class="form-control" aria-label="จำนวนสิทธิ" required>
+                    <button class="btn btn-outline-primary">บันทึก</button>
+                  </div>
+                  <div class="mt-2">
+                    <label class="form-label" for="allocationReason">เหตุผลที่ปรับสิทธิ</label>
+                    <textarea id="allocationReason" name="reason" class="form-control" maxlength="2000" rows="2" required></textarea>
+                  </div>
+                </form>
+            <p id="allocationCurrent" class="text-body-secondary small"></p>
+            <div id="adminCompanies"></div>
+            <h2 class="h5 section-title mt-4">ประวัติการปรับเครดิต</h2>
+            <div id="creditAdjustmentHistory"></div>
+          </div>
+        </section>
+      </div>
 
-  function renderModalTable(data) {
-    let rows = data;
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
-      const preferred = ['listings', 'data', 'emissions', 'transactions', 'companies', 'items', 'results'];
-      const key = preferred.find(k => Array.isArray(data[k]));
-      if (key) rows = data[key];
-    }
+      <div id="historyPage" hidden>
+        <section id="historySection" class="card-custom p-3 p-md-4 mb-4" aria-labelledby="dashboardTitle" hidden>
+          <h2 class="h5 section-title">ประกาศขาย</h2>
+          <div id="listings"></div>
+          <h2 class="h5 section-title mt-4">การโอนสิทธิ</h2>
+          <div id="trades"></div>
+        </section>
+      </div>
 
-    if (Array.isArray(rows)) {
-      if (!rows.length) return '<div class="empty-response">ไม่พบข้อมูล</div>';
-      const columns = [...new Set(rows.flatMap(item => Object.keys(cleanModalObject(item || {}))))]
-        .filter(c => !HIDDEN_MODAL_FIELDS.has(c));
-      return `<div class="modal-table-wrap"><table class="response-data-table"><thead><tr>${columns.map(c => `<th>${escapeHtml(humanizeKey(c))}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr>${columns.map(c => `<td>${formatCell(item?.[c], c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-    }
+      <dialog id="listingDialog" class="card-custom listing-dialog" aria-labelledby="listingDialogTitle">
+        <div class="workspace-panel-heading">
+          <h2 id="listingDialogTitle" class="h5 section-title mb-0">ยื่นคำขอขาย</h2>
+          <button id="closeListingDialog" type="button" class="btn btn-outline-primary btn-sm">ปิด</button>
+        </div>
+        <div class="workspace-panel-body">
+          <div id="listingDialogNotice" aria-live="polite"></div>
+          <p id="listingLimit" class="text-body-secondary small"></p>
+          <form id="listingForm" hidden>
+            <div class="mb-3">
+              <label for="listingContactName" class="form-label">ชื่อผู้ติดต่อ</label>
+              <input id="listingContactName" name="contact_name" class="form-control" maxlength="100" autocomplete="name" required>
+            </div>
+            <div class="mb-3">
+              <label for="listingContactEmail" class="form-label">อีเมลผู้ติดต่อ</label>
+              <input id="listingContactEmail" name="contact_email" type="email" class="form-control" maxlength="254" autocomplete="email">
+            </div>
+            <div class="mb-3">
+              <label for="listingContactPhone" class="form-label">เบอร์โทรผู้ติดต่อ</label>
+              <input id="listingContactPhone" name="contact_phone" type="tel" class="form-control" maxlength="50" autocomplete="tel">
+              <p class="form-text mb-0">กรอกอีเมลหรือเบอร์โทรอย่างน้อยหนึ่งช่อง</p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="listingAmount">จำนวนลงขาย (ตัน CO₂e)</label>
+              <input id="listingAmount" name="amount" type="number" min="0.0001" step="0.0001" class="form-control" aria-describedby="listingLimit" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="listingPrice">ราคา (บาท/ตัน)</label>
+              <input id="listingPrice" name="price" type="number" min="0.01" max="99999999.99" step="0.01" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="listingDescription" class="form-label">รายละเอียดคำขอขาย</label>
+              <textarea id="listingDescription" name="description" class="form-control" maxlength="2000" rows="3" required></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="listingEvidence" class="form-label">เอกสารหรือหลักฐานประกอบ</label>
+              <input id="listingEvidence" type="file" class="form-control" accept=".pdf,.png,.jpg,.jpeg" multiple aria-describedby="evidenceHint">
+              <p id="evidenceHint" class="form-text mb-0">PDF, PNG หรือ JPEG สูงสุด 3 ไฟล์ ไฟล์ละไม่เกิน 2 MB</p>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">ส่งคำขอให้แอดมินตรวจสอบ</button>
+          </form>
+          <a id="listingHistoryLink" href="./?page=history" data-app-link class="btn btn-primary w-100" hidden>จัดการประกาศขาย</a>
+        </div>
+      </dialog>
 
-    if (typeof data === 'object') {
-      const clean = cleanModalObject(data);
-      const entries = Object.entries(clean);
-      if (!entries.length) return '<div class="empty-response">ดำเนินการสำเร็จ</div>';
-      return `<div class="modal-table-wrap"><table class="response-data-table response-key-value"><thead><tr><th>รายการ</th><th>ข้อมูล</th></tr></thead><tbody>${entries.map(([key,value]) => `<tr><td>${escapeHtml(humanizeKey(key))}</td><td>${formatCell(value, key)}</td></tr>`).join('')}</tbody></table></div>`;
-    }
+      <dialog id="requestDetailsDialog" class="card-custom request-details-dialog" aria-labelledby="requestDetailsTitle">
+        <div class="workspace-panel-heading">
+          <h2 id="requestDetailsTitle" class="h5 section-title mb-0">รายละเอียดคำขอขาย</h2>
+          <button id="closeRequestDetails" type="button" class="btn btn-outline-primary btn-sm">ปิด</button>
+        </div>
+        <div class="workspace-panel-body">
+          <div id="requestDetailsNotice" aria-live="polite"></div>
+          <div id="requestDetailsContent"></div>
+          <form id="requestReviewForm" class="mt-3" hidden>
+            <label for="requestReviewReason" class="form-label">หมายเหตุการตรวจสอบ</label>
+            <textarea id="requestReviewReason" class="form-control mb-2" maxlength="2000" rows="3" placeholder="ต้องระบุเหตุผลเมื่อไม่อนุมัติ"></textarea>
+            <button type="submit" name="decision" value="approve" class="btn btn-primary">อนุมัติเปิดขาย</button>
+            <button type="submit" name="decision" value="reject" class="btn btn-outline-danger">ไม่อนุมัติ</button>
+          </form>
+        </div>
+      </dialog>
 
-    return `<div class="response-value">${formatCell(data)}</div>`;
-  }
-
-  function renderResponseTable(data) {
-    if (data === null || data === undefined) return '<div class="text-muted small text-center py-3">ไม่มีข้อมูล Response</div>';
-    const rows = Array.isArray(data) ? data : (Array.isArray(data?.listings) ? data.listings : (Array.isArray(data?.data) ? data.data : null));
-    if (rows) {
-      if (!rows.length) return '<div class="text-muted small text-center py-3">ไม่มีข้อมูล</div>';
-      const columns = [...new Set(rows.flatMap(item => item && typeof item === 'object' ? Object.keys(item) : []))];
-      return `<div class="live-table-wrap"><table class="response-data-table"><thead><tr>${columns.map(c => `<th>${escapeHtml(humanizeKey(c))}</th>`).join('')}</tr></thead><tbody>${rows.map(item => `<tr>${columns.map(c => `<td>${formatCell(item?.[c], c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-    }
-    if (typeof data === 'object') {
-      return `<div class="live-table-wrap"><table class="response-data-table response-key-value"><thead><tr><th>รายการ</th><th>ข้อมูล</th></tr></thead><tbody>${Object.entries(data).map(([key,value]) => `<tr><td>${escapeHtml(humanizeKey(key))}</td><td>${formatCell(value, key)}</td></tr>`).join('')}</tbody></table></div>`;
-    }
-    return `<div class="response-value">${formatCell(data)}</div>`;
-  }
-
-  function updateLiveApi(endpoint, status, data) {
-    const box = document.getElementById('liveApiResponse');
-    const badge = document.getElementById('liveApiStatus');
-    const endpointBox = document.getElementById('liveApiEndpoint');
-    if (!box || !badge || !endpointBox) return;
-    endpointBox.textContent = endpoint;
-    badge.className = `badge ${status >= 200 && status < 300 ? 'bg-success' : 'bg-danger'}`;
-    badge.textContent = `HTTP ${status}`;
-    box.innerHTML = renderResponseTable(data);
-  }
-
-  function showApiResult(status, data, action='รายการ') {
-    const success = status >= 200 && status < 300;
-    const message = data?.message || data?.error || (success ? `${action}สำเร็จ` : `${action}ไม่สำเร็จ`);
-    const modalData = data || {status: success ? 'ดำเนินการสำเร็จ' : `HTTP ${status}`};
-    showApiModal({
-      title: success ? `${action}สำเร็จ` : `${action}ไม่สำเร็จ`,
-      message,
-      type: success ? 'success' : 'error',
-      data: modalData,
-      table: true
-    });
-  }
-
-  async function apiFetch(url, options = {}) {
-    options.headers = { ...(options.headers || {}), ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) };
-    return fetch(url, options);
-  }
-  function showApp(user) {
-    publicPage.classList.add('d-none');
-    loginPage.classList.add('d-none');
-    document.getElementById('appPage').classList.remove('d-none');
-    document.getElementById('userBadge').textContent = `${user.name} • ${user.role}`;
-    document.getElementById('currentRole').textContent = user.role;
-    document.getElementById('emissionCard').classList.toggle('d-none', user.role !== 'Partner');
-    document.getElementById('listingCard').classList.toggle('d-none', user.role !== 'Partner');
-    document.getElementById('companyCard').classList.toggle('d-none', !['Partner','Admin'].includes(user.role));
-    document.getElementById('deleteCard').classList.toggle('d-none', !['Partner','Admin'].includes(user.role));
-    document.getElementById('transactionCard').classList.toggle('d-none', !['Customer','Partner'].includes(user.role));
-    document.getElementById('summaryCard').classList.toggle('d-none', !['Partner','Admin'].includes(user.role));
-  }
-  function logout() {
-    localStorage.removeItem('demo_token'); localStorage.removeItem('demo_user'); authToken = null;
-    document.getElementById('appPage').classList.add('d-none');
-    loginPage.classList.add('d-none');
-    publicPage.classList.remove('d-none');
-    loadPublicMarket();
-  }
-  function showLogin() {
-    publicPage.classList.add('d-none');
-    document.getElementById('appPage').classList.add('d-none');
-    loginPage.classList.remove('d-none');
-  }
-  async function loadPublicMarket() {
-    const list = document.getElementById('publicMarketList');
-    const status = document.getElementById('publicMarketStatus');
-    status.className = 'badge bg-secondary'; status.textContent = 'Loading';
-    try {
-      const res = await fetch('/api/v1/credits/market');
-      const data = await res.json();
-      status.className = `badge ${res.ok ? 'bg-success' : 'bg-danger'}`;
-      status.textContent = `HTTP ${res.status}`;
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถโหลดตลาดได้');
-      const rows = data.listings || data.data || data;
-      if (!Array.isArray(rows) || rows.length === 0) {
-        list.innerHTML = '<div class="text-muted small text-center py-3">ขณะนี้ยังไม่มีรายการ Credit ที่เปิดขาย</div>';
-        return;
-      }
-      list.innerHTML = renderResponseTable(rows);
-    } catch (err) {
-      status.className = 'badge bg-danger'; status.textContent = 'Error';
-      list.innerHTML = `<div class="alert alert-danger small mb-0">${err.message}</div>`;
-    }
-  }
-  function activityLabel(value) {
-    const labels = { ELECTRICITY: 'การใช้ไฟฟ้า', DIESEL: 'น้ำมันดีเซล', GASOLINE: 'น้ำมันเบนซิน', WATER: 'การใช้น้ำ' };
-    return labels[String(value || '').toUpperCase()] || value || '-';
-  }
-
-  function renderEmissionList(rows) {
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return '<div class="empty-response">ยังไม่มีรายการ Emission ของบริษัทนี้</div>';
-    }
-    return `<div class="live-table-wrap"><table class="response-data-table emission-table"><thead><tr>
-      <th>กิจกรรม</th><th>ปริมาณ</th><th>Carbon Footprint</th><th>วันที่บันทึก</th><th>จัดการ</th>
-    </tr></thead><tbody>${rows.map(item => {
-      const amount = Number(item.amount);
-      const carbon = Number(item.carbon_ton_equivalent);
-      const date = item.record_date ? new Date(item.record_date).toLocaleDateString('th-TH') : '-';
-      return `<tr>
-        <td>${escapeHtml(activityLabel(item.activity_type))}</td>
-        <td>${Number.isFinite(amount) ? amount.toLocaleString('th-TH') : escapeHtml(item.amount ?? '-')}</td>
-        <td>${Number.isFinite(carbon) ? carbon.toFixed(4) + ' tCO₂e' : escapeHtml(item.carbon_ton_equivalent ?? '-')}</td>
-        <td>${escapeHtml(date)}</td>
-        <td><button type="button" class="btn btn-danger btn-sm btn-delete-emission" data-emission-id="${escapeHtml(item.id)}">🗑️ ลบ</button></td>
-      </tr>`;
-    }).join('')}</tbody></table></div>`;
-  }
-
-  async function loadEmissions() {
-    const companyId = document.getElementById('emissionListCompanyId').value.trim();
-    const list = document.getElementById('emissionList');
-    const status = document.getElementById('emissionListStatus');
-    if (!companyId) {
-      status.textContent = 'กรุณาระบุ Company UUID';
-      return;
-    }
-    status.textContent = 'กำลังโหลดรายการ...';
-    try {
-      const url = `/api/v1/emissions?company_id=${encodeURIComponent(companyId)}`;
-      const res = await apiFetch(url);
-      const data = await res.json();
-      updateLiveApi(url, res.status, data);
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถโหลดรายการ Emission ได้');
-      const rows = data.data || [];
-      list.innerHTML = renderEmissionList(rows);
-      status.textContent = rows.length ? `พบ ${rows.length} รายการ` : 'ไม่พบรายการ Emission';
-    } catch (err) {
-      list.innerHTML = `<div class="alert alert-danger small mb-0">${escapeHtml(err.message)}</div>`;
-      status.textContent = 'โหลดข้อมูลไม่สำเร็จ';
-    }
-  }
-
-  async function deleteEmissionById(id) {
-    if (!id) return;
-    if (!window.confirm('ต้องการลบรายการ Emission นี้ใช่หรือไม่?')) return;
-    const url = `/api/v1/emissions/${encodeURIComponent(id)}`;
-    try {
-      const res = await apiFetch(url, { method: 'DELETE' });
-      const data = res.status === 204 ? null : await res.json();
-      updateLiveApi(url, res.status, data);
-      showApiResult(res.status, data, 'ลบ Emission');
-      if (res.ok) await loadEmissions();
-    } catch (err) {
-      showApiModal({title:'ลบ Emission ไม่สำเร็จ', message:err.message, type:'error'});
-    }
-  }
-
-  async function handleForm(formId, url, method, buildPayload, actionLabel='ทำรายการ') {
-    document.getElementById(formId).onsubmit = async (e) => {
-      e.preventDefault();
-      try {
-        const targetUrl = typeof url === 'function' ? url() : url;
-        const payload = buildPayload();
-        const options = { method, headers: {'Content-Type':'application/json'} };
-        if (payload !== undefined) options.body = JSON.stringify(payload);
-        const res = await apiFetch(targetUrl, options);
-        const data = res.status === 204 ? null : await res.json();
-        updateLiveApi(targetUrl, res.status, data);
-        showApiResult(res.status, data, actionLabel);
-      } catch (err) {
-        showApiModal({title:`${actionLabel}ไม่สำเร็จ`, message:err.message, type:'error'});
-      }
-    };
-  }
-
-  document.getElementById('loginForm').onsubmit = async (e) => {
-    e.preventDefault(); const errorBox = document.getElementById('loginError'); errorBox.classList.add('d-none');
-    try {
-      const res = await fetch('/api/v1/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:loginEmail.value,password:loginPassword.value})});
-      const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Login failed');
-      authToken = data.token; localStorage.setItem('demo_token', authToken); localStorage.setItem('demo_user', JSON.stringify(data.user)); showApp(data.user); showApiModal({title:'เข้าสู่ระบบสำเร็จ', message:'เข้าสู่ระบบเรียบร้อยแล้ว', type:'success', data:{name:data.user.name || data.user.email || '-', role:data.user.role || '-'}, table:true});
-    } catch(err){ errorBox.textContent=err.message; errorBox.classList.remove('d-none'); }
-  };
-  logoutBtn.onclick = logout;
-  document.getElementById('goLoginBtn').onclick = showLogin;
-  document.getElementById('backPublicBtn').onclick = () => { loginPage.classList.add('d-none'); publicPage.classList.remove('d-none'); };
-  document.getElementById('btnPublicMarket').onclick = loadPublicMarket;
-  handleForm('createEmissionForm','/api/v1/emissions','POST',()=>({company_id:createCompanyId.value,activity_type:createActivityType.value,amount:Number(createAmount.value),record_date:new Date().toISOString().split('T')[0]}),'บันทึก Carbon Footprint');
-  handleForm('listingForm','/api/v1/credits/listings','POST',()=>({seller_company_id:listingSellerId.value,amount_tco2e:Number(listingAmount.value),price_per_ton:Number(listingPrice.value)}),'ลงขาย Carbon Credit');
-  handleForm('transactionForm','/api/v1/transactions','POST',()=>({seller_company_id:txSellerId.value,buyer_company_id:txBuyerId.value,amount_tco2e:Number(txAmount.value),price_per_ton:Number(txPrice.value)}),'ซื้อ Carbon Credit');
-  handleForm('updateCompanyForm',()=>`/api/v1/companies/${updateCompanyId.value}`,'PUT',()=>({name:updateName.value||undefined,industry_type:updateIndustry.value||undefined,reduction_target:updateTarget.value===''?undefined:Number(updateTarget.value)}),'อัปเดตข้อมูลบริษัท');
-  document.getElementById('btnFetchEmissions').onclick = loadEmissions;
-  document.getElementById('emissionList').addEventListener('click', e => {
-    const btn = e.target.closest('.btn-delete-emission');
-    if (btn) deleteEmissionById(btn.dataset.emissionId);
-  });
-  handleForm('summaryForm',()=>`/api/v1/emissions/summary?company_id=${encodeURIComponent(summaryCompanyId.value)}`,'GET',()=>undefined,'ดึงข้อมูล');
-  btnFetchMarket.onclick = async()=>{
-    try {
-      const res = await apiFetch('/api/v1/credits/market');
-      const data = await res.json();
-      updateLiveApi('/api/v1/credits/market', res.status, data);
-      if (!res.ok) throw new Error(data.error || 'ไม่สามารถดึงตลาดได้');
-      showApiModal({title:'ตลาด Carbon Credit', message:'รายการ Carbon Credit ที่เปิดขาย', type:'success', data:data, table:true});
-    } catch(e) {
-      showApiModal({title:'ดึงข้อมูลไม่สำเร็จ', message:e.message, type:'error'});
-    }
-  };
-  document.getElementById('apiModalClose').onclick = closeApiModal;
-  document.getElementById('apiModalOk').onclick = closeApiModal;
-  document.querySelector('.api-modal-backdrop').onclick = closeApiModal;
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeApiModal(); });
-
-  if(authToken){apiFetch('/api/v1/auth/me').then(async r=>{if(!r.ok){localStorage.removeItem('demo_token');localStorage.removeItem('demo_user');authToken=null;return;}showApp((await r.json()).user)}).catch(()=>{localStorage.removeItem('demo_token');localStorage.removeItem('demo_user');authToken=null;})}
-  loadPublicMarket();
-</script>
+      <dialog id="emissionDetailsDialog" class="card-custom request-details-dialog" aria-labelledby="emissionDetailsTitle">
+        <div class="workspace-panel-heading">
+          <h2 id="emissionDetailsTitle" class="h5 section-title mb-0">รายละเอียดคำขอยอดใช้จริง</h2>
+          <button id="closeEmissionDetails" type="button" class="btn btn-outline-primary btn-sm">ปิด</button>
+        </div>
+        <div class="workspace-panel-body">
+          <div id="emissionDetailsNotice" aria-live="polite"></div>
+          <div id="emissionDetailsContent"></div>
+          <form id="emissionDecisionForm" class="mt-3" hidden>
+            <label for="emissionDecisionReason" class="form-label">หมายเหตุการตรวจสอบ</label>
+            <textarea id="emissionDecisionReason" class="form-control mb-2" maxlength="2000" rows="3" placeholder="ระบุเหตุผลเมื่อไม่อนุมัติ"></textarea>
+            <button type="submit" value="approve" class="btn btn-primary">อนุมัติยอดปล่อย</button>
+            <button type="submit" value="reject" class="btn btn-outline-danger">ไม่อนุมัติ</button>
+          </form>
+          <button id="cancelEmissionSubmission" type="button" class="btn btn-outline-danger mt-2" hidden>ยกเลิกคำขอ</button>
+        </div>
+      </dialog>
+    </section>
+  </main>
 </body>
 </html>

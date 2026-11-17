@@ -1,61 +1,87 @@
-const crypto = require('crypto');
+const { createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
+const pool = require('../config/database');
 
-const SECRET = process.env.JWT_SECRET || 'demo-secret-change-me-in-production';
+const configuredSecret = process.env.JWT_SECRET;
+const exampleSecret = 'replace-with-a-random-secret-at-least-32-characters';
+const secret = configuredSecret && configuredSecret !== exampleSecret && Buffer.byteLength(configuredSecret) >= 32
+  ? configuredSecret : randomBytes(32);
+const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+const uuidFormat = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
-function base64url(value) {
-  return Buffer.from(value).toString('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+function signature(unsignedToken) {
+  return createHmac('sha256', secret).update(unsignedToken).digest('base64url');
 }
 
-function signToken(payload) {
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const encodedHeader = base64url(JSON.stringify(header));
-  const encodedPayload = base64url(JSON.stringify(payload));
-  const unsigned = `${encodedHeader}.${encodedPayload}`;
-  const signature = crypto.createHmac('sha256', SECRET).update(unsigned).digest('base64url');
-  return `${unsigned}.${signature}`;
+function signToken(account) {
+  const payload = {
+    sub: account.id,
+    ver: account.session_version,
+    exp: Math.floor(Date.now() / 1000) + 8 * 60 * 60
+  };
+  const unsigned = header + '.' + Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return unsigned + '.' + signature(unsigned);
 }
 
 function verifyToken(token) {
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('Invalid token');
+  const [tokenHeader, payload, tag, extra] = token.split('.');
+  if (tokenHeader !== header || !payload || !tag || extra !== undefined || token.length > 512) {
+    throw new Error('Invalid token');
+  }
 
-  const [header, payload, signature] = parts;
-  const expected = crypto.createHmac('sha256', SECRET).update(`${header}.${payload}`).digest('base64url');
-
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  const expected = Buffer.from(signature(tokenHeader + '.' + payload));
+  const received = Buffer.from(tag);
+  if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
     throw new Error('Invalid signature');
   }
 
   const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-  if (!data.exp || Date.now() >= data.exp * 1000) throw new Error('Token expired');
+  if (typeof data.sub !== 'string' || !uuidFormat.test(data.sub) || !Number.isSafeInteger(data.ver)
+      || !Number.isSafeInteger(data.exp) || Date.now() >= data.exp * 1000) {
+    throw new Error('Invalid or expired token');
+  }
   return data;
 }
 
-function requireAuth(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authentication required' });
+function accountProfile(account) {
+  const { email, name, role, company_id } = account;
+  return { email, name, role, company_id };
+}
+
+async function requireAuth(req, res, next) {
+  const auth = req.get('authorization');
+  if (!auth?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบ' });
+  }
+
+  let claims;
+  try {
+    claims = verifyToken(auth.slice(7));
+  } catch {
+    return res.status(401).json({ error: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' });
   }
 
   try {
-    req.user = verifyToken(auth.slice(7));
+    const { rows: [account] } = await pool.query(`
+      SELECT id, email, name, role, company_id FROM app_accounts WHERE id = $1 AND session_version = $2
+    `, [claims.sub, claims.ver]);
+    if (!account) return res.status(401).json({ error: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' });
+
+    req.user = accountProfile(account);
+    req.auth = { accountId: account.id, sessionVersion: claims.ver };
     next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  } catch (error) {
+    next(error);
   }
 }
 
 function requireRole(...roles) {
   return (req, res, next) => {
-    if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+    if (!req.user) return res.status(401).json({ error: 'กรุณาเข้าสู่ระบบ' });
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Forbidden', message: `Required role: ${roles.join(' or ')}` });
+      return res.status(403).json({ error: 'บัญชีนี้ไม่มีสิทธิ์ทำรายการ' });
     }
     next();
   };
 }
 
-module.exports = { signToken, requireAuth, requireRole };
+module.exports = { accountProfile, signToken, requireAuth, requireRole };
